@@ -1,0 +1,69 @@
+---
+title: "SA2"
+author: "Dizon, Kiana Marie & Delos Santos, Paul Joaquin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Summative Assessment 2
+
+1. Find out which probability distribution function best fits Bitcoin’s returns for trading data every minute, from January 1, 2012 to April 15, 2024, for Bitcoin quoted in United States dollars or the BTC/USD pair. 
+
+```{r 1}
+# Define Tsallis distribution function
+rtsallis <- function(n, q, mean, sd) {
+  x <- rnorm(n, mean, sd)
+  x <- x / sqrt(q)
+  return(x)
+}
+
+# Load necessary libraries
+library(stats)
+
+# Load the CSV file
+df <- read.csv("C:/Users/Kiana/Documents/R Language/SA2/bitstampUSD_1-min_data_2012-01-01_to_2024-02-09.csv")
+head(df, 10)
+# Convert 'Price' column to numeric
+df$Price <- as.numeric(as.character(df$Price))
+
+# Create a function to drop NA values and calculate returns
+DropNA <- function(x) {
+  x <- diff(log(x$Price))
+  x <- x[!is.na(x)]
+  return(x)
+}
+
+# Create random samples for each distribution and perform Kolmogorov-Smirnov tests
+distributions <- c("normal", "t", "cauchy", "tsallis", "powerlaw")
+results <- data.frame(Distribution = distributions, D_statistic = numeric(length(distributions)))
+
+for (dist in distributions) {
+  set.seed(123) # Set seed for reproducibility
+  df_teste <- switch(dist,
+                     normal = rnorm(length(DropNA(df)), mean = mean(DropNA(df)), sd = sd(DropNA(df))),
+                     t = rt(length(DropNA(df)), df = length(DropNA(df)) - 1),
+                     cauchy = rcauchy(length(DropNA(df)), location = mean(DropNA(df)), scale = sd(DropNA(df))),
+                     tsallis = rtsallis(length(DropNA(df)), q = 2, mean = mean(DropNA(df)), sd = sd(DropNA(df))),
+                     powerlaw = poweRlaw::rplcon(length(DropNA(df)), -0.3, sd(DropNA(df))))
+  
+  
+  ks_result <- ks.test(DropNA(df), df_teste)
+  results[results$Distribution == dist, "D_statistic"] <- ks_result$statistic
+}
+
+# Show the results
+results
+
+# Find the distribution with the smallest D_statistic
+best_distribution <- results[which.min(results$D_statistic), "Distribution"]
+best_statistic <- min(results$D_statistic)
+
+# Print the conclusion
+cat("The best-fitting distribution for Bitcoin's returns is", best_distribution, "with a D_statistic of", best_statistic, "\n")
+
+
+
+
+
+```
+
